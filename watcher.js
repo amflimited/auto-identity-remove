@@ -40,6 +40,10 @@ const ONLY_ARG  = onlyIdx !== -1 ? (process.argv[onlyIdx + 1] || '') : null;
 const skipIdx   = process.argv.indexOf('--skip');
 const SKIP_ARG  = skipIdx !== -1 ? (process.argv[skipIdx + 1] || '') : null;
 const RETRY_FAILED = process.argv.includes('--retry-failed');
+// Explicit-only: run just the curated high-value people-search brokers (the ~44 in
+// brokers.js) and skip the ~490-broker generic marketing/ad-tech pass. This is the
+// fast (~1h) removal tier; the full run covers everything. Also settable via env.
+const EXPLICIT_ONLY = process.argv.includes('--explicit-only') || process.env.AIDR_EXPLICIT_ONLY === '1';
 const LIST_MODE    = process.argv.includes('--list');
 const SCORE_MODE   = process.argv.includes('--score');
 
@@ -998,18 +1002,22 @@ async function _mainBody() {
   // faster run that quietly skips people. Domain-level toggles (cookie /
   // "Do Not Sell") get re-applied per person, which is harmless.
   const genericTotals = {};
-  for (const person of persons) {
-    if (persons.length > 1) {
-      console.log(`\n── Generic brokers for ${person.firstName} ${person.lastName} ──`);
-    }
-    const genericResult = await runGenericBrokers(context, explicitHosts, state, logResult, recordSuccess, {
-      dryRun: DRY_RUN,
-      person,
-      personCount: persons.length,
-    });
-    if (genericResult && genericResult.genericStats) {
-      for (const [k, v] of Object.entries(genericResult.genericStats)) {
-        genericTotals[k] = (genericTotals[k] || 0) + (typeof v === 'number' ? v : 0);
+  if (EXPLICIT_ONLY) {
+    console.log(`\n── Skipping the ~490-broker generic pass (--explicit-only: high-value people-search sites only) ──`);
+  } else {
+    for (const person of persons) {
+      if (persons.length > 1) {
+        console.log(`\n── Generic brokers for ${person.firstName} ${person.lastName} ──`);
+      }
+      const genericResult = await runGenericBrokers(context, explicitHosts, state, logResult, recordSuccess, {
+        dryRun: DRY_RUN,
+        person,
+        personCount: persons.length,
+      });
+      if (genericResult && genericResult.genericStats) {
+        for (const [k, v] of Object.entries(genericResult.genericStats)) {
+          genericTotals[k] = (genericTotals[k] || 0) + (typeof v === 'number' ? v : 0);
+        }
       }
     }
   }
