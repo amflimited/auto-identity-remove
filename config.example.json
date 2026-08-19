@@ -22,8 +22,8 @@
   },
 
   "capsolver": {
-    "_comment": "Sign up free at capsolver.com - pay-as-you-go, costs pennies/month for this use case",
-    "apiKey": "CAP-YOUR_KEY_HERE"
+    "_comment": "Captcha solver key (this fork uses 2Captcha - api.2captcha.com, pay-as-you-go). Leave blank here and set TWOCAPTCHA_API_KEY in the environment to keep the key out of config.json (recommended). Point CAPTCHA_API_BASE at another Anti-Captcha-compatible provider to switch.",
+    "apiKey": ""
   },
 
   "hibp": {

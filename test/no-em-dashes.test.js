@@ -26,8 +26,11 @@ const { execFileSync } = require('node:child_process');
 
 const ROOT = path.join(__dirname, '..');
 
-const EM_DASH = '—';
-const EN_DASH = '–';
+// Build the characters from their code points rather than writing them
+// literally, so this test file does not itself trip the rule it enforces
+// (git ls-files includes this file in the scan).
+const EM_DASH = String.fromCharCode(0x2014);
+const EN_DASH = String.fromCharCode(0x2013);
 
 /** Tracked files, so generated and ignored content is out of scope. */
 function trackedFiles() {
