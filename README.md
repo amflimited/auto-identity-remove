@@ -2,7 +2,7 @@
 
 ![CI](https://github.com/stephenlthorn/auto-identity-remove/actions/workflows/test.yml/badge.svg)
 
-Automated data broker opt-out runner for macOS, Linux, and Windows. Removes your personal information from **500+ people-search sites and data broker databases** on a monthly schedule - with CAPTCHA solving, persistent state tracking (so completed opt-outs aren't resubmitted every run), and an iMessage notification when done. [**Privacy & data flow ->**](docs/PRIVACY.md)
+Development CLI for attempting data-broker opt-outs on macOS, Linux, and Windows. Its 44 hand-written definitions and larger licensed directory are engineering catalogs, not verified coverage. Protect Indiana customer mode adds a separate owner-approved allowlist and currently refuses submissions while that boundary is pending. The tool includes CAPTCHA handling, persistent outcome state, and optional notifications. [**Privacy & data flow ->**](docs/PRIVACY.md)
 
 ## What it does
 
@@ -10,8 +10,8 @@ Each month, the script:
 
 1. **Searches** each data broker site for your name + state
 2. **Finds your specific listing** (for sites that need a profile URL)
-3. **Fills and submits** the opt-out form automatically
-4. **Solves CAPTCHAs** via [CapSolver](https://capsolver.com) (AI-powered, ~$0.001/solve)
+3. **Attempts to fill and submit** supported opt-out forms
+4. **Attempts supported CAPTCHAs** through 2Captcha when configured
 5. **Skips** brokers you were already removed from recently (90-day re-check window)
 6. **Sends you an iMessage** with the results summary
 7. **Opens** any sites that require manual action in your browser
@@ -106,7 +106,7 @@ Every subcommand maps to the equivalent `node watcher.js --<flag>` invocation.
 |------|-------------|
 | **Personal info** | Name, city, state, ZIP, email, phone |
 | **Aliases** | Past names or variations (e.g. "Steve Doe") |
-| **CapSolver key** | For CAPTCHA-protected opt-out forms |
+| **2Captcha key** | For supported CAPTCHA-protected opt-out forms |
 | **One-time accounts** | Creates accounts on sites that require login (stored in `config.json`, gitignored) |
 | **iMessage** | Phone number to text the results summary to |
 | **Monthly schedule** | Registers a monthly job to run on the 1st at 9am (launchd / systemd / crontab / schtasks - detected automatically) |
@@ -115,13 +115,12 @@ Every subcommand maps to the equivalent `node watcher.js --<flag>` invocation.
 
 ---
 
-## CapSolver (optional but recommended)
+## 2Captcha (optional)
 
-Some opt-out forms have reCAPTCHA. Without CapSolver, those sites go to your manual list instead of being handled automatically.
+Some opt-out forms have reCAPTCHA, hCaptcha, or Turnstile. This fork routes compatible tasks through 2Captcha. Without a key, those sites go to the manual/blocked outcome instead of being handled automatically.
 
-1. Sign up at [capsolver.com](https://capsolver.com) - free, pay-as-you-go
-2. Add $1-2 of credits (enough for months of use at ~$0.001/solve)
-3. Paste your API key when `setup.js` asks, or add it to `config.json`:
+1. Create a 2Captcha account and review its current terms and pricing.
+2. Set `TWOCAPTCHA_API_KEY` in the environment. The legacy `capsolver.apiKey` field remains supported for upstream config compatibility:
 
 ```json
 "capsolver": {
@@ -129,7 +128,7 @@ Some opt-out forms have reCAPTCHA. Without CapSolver, those sites go to your man
 }
 ```
 
-> **CapSolver is optional.** Without it, CAPTCHA-protected sites are flagged as
+> **2Captcha is optional.** Without it, CAPTCHA-protected sites are flagged as
 > manual and opened in your browser for completion. Pass `--no-capsolver` to skip
 > them entirely rather than opening the browser.
 
@@ -188,7 +187,7 @@ docker run --rm --init \
 ```
 
 **Low-RAM hosts** (NAS, Raspberry Pi, small VPS): add `-e AIDR_LOW_MEMORY=1`. A
-full 40-broker run peaks at about 250 MB either way; the flag trades some render
+full explicit-catalog run peaks at about 250 MB either way; the flag trades some render
 fidelity for less background work on slow cores.
 
 > **Synology / NAS users:** see [docs/SYNOLOGY.md](docs/SYNOLOGY.md) for a full
@@ -262,12 +261,18 @@ On each run you'll see:
 
 ## How confident should I be?
 
-This tool covers 500+ data brokers in two tiers:
+The upstream tool has two technical catalogs. Protect Indiana customer runs add a third,
+fail-closed boundary: `data/protectindiana-boundaries.json` must be owner-approved and selects an
+exact subset of the explicit catalog. `--explicit-only` alone is not a support claim.
 
 | Tier | Count | Confidence |
 |---|---|---|
-| **Explicit brokers** ([STATUS.md](STATUS.md)) | 44 | Hand-mapped with specific selectors. **None are currently marked `verified`** - the selectors compile and were correct when written, but none has been re-tested against the live site recently, so any of them may have drifted. |
-| **Generic runner** | ~490 | Best-effort heuristic - tries 4 strategies (Do Not Sell click, OneTrust/TrustArc, generic form, DSAR link). Many succeed; some fail silently. |
+| **Explicit development catalog** ([STATUS.md](STATUS.md)) | 44 | Hand-mapped definitions, not supported customer coverage. None has a current end-to-end deletion verification. |
+| **Generic runner** | Variable | Development-only best-effort heuristic. Not enabled for Protect Indiana customer-plan submissions. |
+| **Protect Indiana approved subset** | See boundary file | Exact owner-approved names only. The product runtime refuses to submit while approval is pending, the list is empty, or the catalog drifts. |
+
+None are currently marked `verified` in the explicit development catalog. A submitted form is not
+proof of deletion.
 
 Be skeptical of the counts this tool prints. Broker sites change their DOM
 constantly and a selector that no longer matches fails quietly. That is the
@@ -282,50 +287,23 @@ If you want to know exactly which brokers are hand-verified vs heuristic, see [S
 
 ---
 
-## Brokers covered
+## Broker catalogs and customer coverage
 
-### Auto-removed (30+)
+`brokers.js` is the upstream explicit development catalog. Its entries describe intended methods,
+not verified current behavior. See [STATUS.md](STATUS.md) for the 2026-08-20 interface observations
+and exclusions. Protect Indiana's actual customer submission set is only the approved subset in
+`data/protectindiana-boundaries.json`; public copy must never derive a coverage count from either
+development catalog.
 
-| Site | Method |
-|------|--------|
-| Spokeo | Search → find listing → opt-out form |
-| WhitePages | Search → find listing → suppression form |
-| FastPeopleSearch | Search → opt-out form |
-| TruePeopleSearch | Direct opt-out form |
-| BeenVerified | Opt-out search form |
-| Radaris | Search → privacy form |
-| Intelius | Direct opt-out form |
-| PeopleFinders | Direct opt-out form |
-| PeopleSmart | Direct opt-out form |
-| MyLife | Search → opt-out |
-| Nuwber | Search → removal form |
-| FamilyTreeNow | Direct opt-out form |
-| CheckPeople | Direct opt-out form |
-| ThatsThem | Direct opt-out form |
-| USPhonebook | Direct opt-out form |
-| PublicDataUSA | Direct opt-out form |
-| SmartBackgroundChecks | Direct opt-out form |
-| SearchPeopleFree | Direct opt-out form |
-| PeopleSearchNow | Direct opt-out form |
-| InfoTracer | Direct opt-out form |
-| SocialCatfish | Direct opt-out form |
-| NationalPublicData | Direct opt-out form |
-| ClustrMaps | Direct opt-out form |
-| PrivateRecords | Direct opt-out form |
-| **Acxiom** | Direct form (feeds dozens of downstream brokers) |
-| **LexisNexis** | Direct form (legal/financial data) |
-| **ZoomInfo** | Direct form (B2B professional data) |
-| **Clearbit** | Direct form (B2B enrichment data) |
-| Pipl | Email opt-out via Mail.app |
+### Generic registry runner (development-only in Protect Indiana)
 
-### Generic - 500+ additional brokers (auto-detected)
-
-`generic-runner.js` handles the remaining ~470 brokers from two public datasets:
+`generic-runner.js` can load additional registry rows for research and testing. The Protect Indiana
+product wrapper passes `--explicit-only`, so these rows are not supported customer coverage.
 
 | Dataset | Source | Count |
 |---------|--------|-------|
-| [The Markup's data broker list](https://themarkup.org/privacy/2023/01/26/which-data-brokers-offer-opt-outs) | Journalism research, 494 opt-out URLs | ~494 |
-| [BADBOOL](https://github.com/yaelwrites/Big-Ass-Data-Broker-Opt-Out-List) | Community-maintained people-search list | ~27 extra |
+| [PersProtect open data](https://github.com/Persprotect/data-broker-opt-out-list) | CC BY 4.0 opt-out directory | 499 directory rows |
+| California and Vermont public registries | Government registry feeds, when refreshed | Variable |
 
 For each site it tries four strategies in order:
 1. Click a "Do Not Sell My Personal Information" button
@@ -340,6 +318,8 @@ Sites requiring manual action are opened in your browser automatically.
 | Site | Why manual |
 |------|-----------|
 | Google - Results About You | Requires Google account interaction |
+| FastPeopleSearch | Current flow requires an agent/subject declaration, certification, Turnstile, and an emailed continuation; the stale one-page integration is disabled. |
+| CheckPeople | Current flow starts through an emailed verification link; the stale query-string direct form is disabled and the first step is not a removal. |
 | Google - Outdated Content | Case-by-case URL submission |
 
 ---
@@ -446,19 +426,19 @@ Only brokers tagged `acceptsBogus: true` in `brokers.js` will receive noise subm
 
 ### Refreshing the broker list (`--update-brokers`)
 
-The bundled Markup dataset is from January 2023 and is increasingly stale. Refresh the broker coverage from the official, auto-updating state data-broker registries:
+Refresh the development registry file from the official California and Vermont data-broker registries:
 
 ```bash
 node watcher.js --update-brokers
 ```
 
-This fetches the California (SB-362) and Vermont registries over HTTP (no browser is launched), normalizes each entry, dedups it by hostname against the explicit brokers in `brokers.js`, and writes `data/feeds-brokers.json`. The generic runner loads that file alongside the Markup dataset on the next run; the Markup data stays as the fallback, so a failed or skipped refresh never reduces coverage. Override the registry URLs with the `CA_REGISTRY_URL` / `VT_REGISTRY_URL` environment variables if the official endpoints move.
+This fetches the California and Vermont registries over HTTP (no browser is launched), normalizes each entry, deduplicates it by hostname against the explicit brokers in `brokers.js`, and writes `data/feeds-brokers.json`. The generic development runner loads that file after the CC BY 4.0 PersProtect directory. The Markup dataset is disabled because its terms were not approved for this commercial runtime. Override the registry URLs with the `CA_REGISTRY_URL` / `VT_REGISTRY_URL` environment variables if the official endpoints move.
 
 ---
 
 ### Pruning stale / dead URLs
 
-The Markup dataset is years old; many of the ~489 generic opt-out URLs now 404 or fail DNS lookup. These are classified as `💀 Dead (stale URL)` in run output and do **not** count as errors.
+Generic directory and registry URLs change frequently; dead links are classified as `💀 Dead (stale URL)` in run output and do **not** count as successful work.
 
 After several runs have accumulated in `logs/`, trim permanently-dead hostnames from future runs so they are skipped without any network request:
 
@@ -523,16 +503,16 @@ US people-search sites (`Spokeo`, `WhitePages`, etc.) hold records sourced from 
 
 ---
 
-## Is it safe to submit my info to 500 opt-out forms?
+## Is it safe to submit my info to broker opt-out forms?
 
 A fair concern raised by some users: aren't you just confirming your data to the brokers by filling out their forms?
 
 A few things worth knowing:
 
-- **These brokers already have your info.** You're not revealing anything new - you're using the legally-required removal mechanism they're obligated to provide.
-- **CCPA (California) and similar state laws require brokers to honor opt-out requests.** Submitting the form creates a legal obligation to remove you. Doing nothing does not.
-- **The script uses info you're already listed under** - your name as it appears publicly, your state, your email. It doesn't add new data points.
-- **The alternative is worse.** Every month that passes, more brokers scrape and resell your data. Opt-outs are imperfect, but they work more often than not.
+- A broker may already hold some of the requested information, but a form can still disclose or confirm additional details.
+- Eligibility, required fields, attestations, and legal effect vary by site and jurisdiction.
+- Review every target and submitted field in preview mode before authorizing a real run.
+- A submitted request is not proof that a listing was removed, and a later removal may not be permanent.
 
 That said: if you're in a situation where even confirming your email address to a broker is a risk, this tool is not the right approach. Consider a paid service that uses a proxy email.
 

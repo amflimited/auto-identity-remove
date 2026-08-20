@@ -99,18 +99,17 @@ function buildBrokers(person) {
 
   // ═══ Priority 1 - California DELETE Act portal (covers all ~500 CA-registered brokers) ═══
 
-  // CA DROP (Delete Request and Opt-out Platform) is not yet live as of late 2025.
-  // SB 362 broker-side compliance deadline is August 1, 2026.
-  // Keeping this entry as manual with the official CPPA registry landing page.
+  // California's DROP consumer portal is live, but it is limited to California
+  // residents. Keep it manual and out of Protect Indiana customer automation.
   {
     name: 'California DELETE Portal',
-    optOutUrl: 'https://cppa.ca.gov/data_broker_registry/',
+    optOutUrl: 'https://privacy.ca.gov/data-brokers/',
     method: 'manual',
     priority: 1,
-    confidence: 'documented_not_live',
+    confidence: 'official_current',
     usOnly: false,
-    note: 'CA DROP delete portal is not yet live. SB 362 broker-side compliance deadline is August 1, 2026.',
-    notes: 'CA DROP (Delete Request and Opt-out Platform) under SB 362 is not yet live. The broker-side compliance deadline is August 1, 2026. CPPA has missed several preceding milestones; ongoing litigation (Data Brokers Association v. Bonta) may further delay. Official registry: https://cppa.ca.gov/data_broker_registry/',
+    note: 'California residents can use the official DROP portal. Indiana residents are not eligible.',
+    notes: 'Official California DROP portal. This is a manual resource for eligible California residents, not a Protect Indiana automated submission target.',
   },
 
   // ═══ Priority 1 - High-traffic people-search sites ═══════════════════════
@@ -145,15 +144,11 @@ function buildBrokers(person) {
 
   {
     name: 'FastPeopleSearch',
-    method: 'search-form',
-    searchUrl: `https://www.fastpeoplesearch.com/name/${enc(F)}-${enc(L)}_${ST}`,
-    listingPattern: /fastpeoplesearch\.com\/name\//i,
+    method: 'manual',
     optOutUrl: 'https://www.fastpeoplesearch.com/optout',
-    formFields: { 'input[id="optout_name"],input[name*="name"]': N, 'input[type="email"]': E },
-    submitSelector: 'button[type="submit"]',
-    captchaLikely: false,
     priority: 1,
     usOnly: true,
+    notes: 'Current workflow requires subject/authorized-agent selection, separate agent and subject identity fields, certification, Cloudflare Turnstile, an emailed link, a second identity form, and a final receipt. The old single-page search-form automation is disabled.',
   },
 
   {
@@ -266,13 +261,10 @@ function buildBrokers(person) {
 
   {
     name: 'CheckPeople',
-    method: 'direct-form',
-    // Their /opt-out page redirects - use the search-based removal flow instead
-    optOutUrl: `https://checkpeople.com/opt-out?firstName=${enc(F)}&lastName=${enc(L)}&state=${ST}`,
-    formFields: { 'input[name*="first" i]': F, 'input[name*="last" i]': L, 'input[type="email"]': E, 'select[name*="state" i]': ST },
-    submitSelector: 'button[type="submit"]',
-    captchaLikely: false,
+    method: 'manual',
+    optOutUrl: 'https://checkpeople.com/opt-out',
     priority: 2,
+    notes: 'Current suppression workflow starts with the requestor email, terms/transactional-email consent, and an emailed verification link. The old query-string direct form is disabled; the first step alone is never a removal.',
   },
 
   // ═══ Priority 2 - Additional people-search sites ══════════════════════════

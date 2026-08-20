@@ -1,91 +1,59 @@
-# Broker Status
+# Broker integration status
 
-> **Reality check:** Every broker entry here is labeled `untested` until manually verified against the live site. The selectors compile and the test suite verifies their internal structure, but no end-to-end verification has been performed in the current run window. Many of these sites change their DOM frequently - selectors decay.
->
-> **What "untested" means:** the broker entry is structurally valid but has not been hand-verified against the live site recently. The opt-out attempt will be made but may silently fail if the site has changed its form.
->
-> **Brokers known to be dead or moved as of late 2025:**
-> - **NationalPublicData**: defunct (Aug 2024 SSN breach + Oct 2024 bankruptcy). Listing kept for historical reference; opt-out flow does not work.
-> - **Clearbit**: acquired by HubSpot (Nov 2023). Opt-out moved to hubspot.com/data-privacy/data-rights-form.
-> - **Acxiom**: live but requires multi-step identity verification at acxiom.com/about-us/privacy/. Single-form POST will fail.
-> - **LexisNexis Risk Solutions**: requires a fillable PDF mailed/faxed + a separate portal at consumer.risk.lexisnexis.com. Single-form POST will fail.
-> - **ZoomInfo**: opt-out is at privacy.zoominfo.com/profile/edit-or-delete behind email verification.
->
-> If you encounter a broker that has changed its form, please file a GitHub issue with the broker name and the new form layout.
+**Reviewed:** 2026-08-20
 
-**Last updated:** auto-generated table - re-run `node scripts/generate-status.js` after editing `brokers.js`.
+`brokers.js` contains 44 hand-written definitions for the upstream development engine. That is a
+catalog, not Protect Indiana's supported customer coverage. None of those definitions has passed a
+current end-to-end deletion test, and several current public workflows no longer match the stored
+URL, selectors, or method.
 
-## How to read this
+Protect Indiana's paid runtime is separately bounded by
+`data/protectindiana-boundaries.json`. It fails closed while that file is pending owner approval,
+if the approved list is empty, or if a listed broker disappears from the catalog. The generic
+PersProtect directory is development/reference data only and is never a customer submission lane.
 
-- **Method** - how the opt-out is automated. `search-form` (looks you up first, then submits removal), `direct-form` (goes straight to the opt-out URL), `email` (sends a removal-request email), `manual` (opened in your browser).
-- **CAPTCHA** - whether CapSolver is invoked before submit.
-- **Confidence** - `verified` means the selectors / flow have been manually confirmed against the live site. `untested` means the entry exists but has not been hand-verified end-to-end and depends on the broker not having changed its DOM.
-- **US-only** - site indexes US public records / voter data / phone directories; automatically skipped for non-US users.
+## 2026-08-20 interface review and authorized owner test
 
-**This list covers the 42 explicit brokers in `brokers.js` only.** The other ~490 brokers in `data/markup-parsed.json` and `data/badbool-extra.json` are handled by the heuristic generic runner - every one of those is best-effort. Run `node watcher.js --verify` to spot-check whether opt-outs are still in effect.
+The owner authorized a real test with the owner's existing identity and confirmation inbox. Test
+evidence is redacted and does not make either workflow supported customer automation. “Loaded”
+means only that the public interface was inspected from S1; it does not mean a request or deletion
+was end-to-end verified.
 
----
-
-## Explicit brokers
-
-| Broker | Method | CAPTCHA | Confidence | US-only |
-|---|---|---|---|---|
-| California DELETE Portal | direct-form | no | untested | no |
-| Spokeo | search-form | no | untested | yes |
-| WhitePages | search-form | no | untested | yes |
-| FastPeopleSearch | search-form | no | untested | yes |
-| TruePeopleSearch | direct-form | no | untested | yes |
-| BeenVerified | search-form | yes | untested | yes |
-| Radaris | search-form | no | untested | no |
-| Intelius | direct-form | no | untested | no |
-| PeopleFinders | direct-form | no | untested | no |
-| PeopleSmart | direct-form | no | untested | no |
-| MyLife | search-form | yes | untested | no |
-| Nuwber | search-form | no | untested | no |
-| FamilyTreeNow | direct-form | yes | untested | no |
-| CheckPeople | direct-form | no | untested | no |
-| ThatsThem | direct-form | no | untested | no |
-| USPhonebook | direct-form | no | untested | yes |
-| PublicDataUSA | direct-form | no | untested | yes |
-| SmartBackgroundChecks | direct-form | no | untested | no |
-| SearchPeopleFree | direct-form | no | untested | no |
-| PeopleSearchNow | direct-form | no | untested | no |
-| InfoTracer | direct-form | no | untested | no |
-| SocialCatfish | direct-form | no | untested | no |
-| NationalPublicData | direct-form | no | defunct | no |
-| ClustrMaps | direct-form | no | untested | no |
-| PrivateRecords | direct-form | no | untested | no |
-| Acxiom | direct-form | no | defunct | no |
-| LexisNexis | direct-form | no | defunct | no |
-| ZoomInfo | direct-form | no | defunct | no |
-| Clearbit | direct-form | no | defunct | no |
-| PeekYou | direct-form | no | untested | no |
-| Addresses.com | direct-form | no | untested | yes |
-| AnyWho | direct-form | no | untested | yes |
-| TruthFinder | direct-form | no | untested | yes |
-| InstantCheckmate | direct-form | no | untested | yes |
-| Epsilon | direct-form | no | untested | no |
-| Oracle Data Cloud | direct-form | no | untested | no |
-| Equifax (marketing) | direct-form | no | untested | no |
-| Experian (marketing) | direct-form | no | untested | no |
-| DataAxle | direct-form | no | untested | no |
-| Pipl | email | n/a | untested | no |
-| Spokeo (email) | email | n/a | untested | no |
-| Google - Results About You | manual | n/a | n/a | no |
-| Google - Outdated Content | manual | n/a | n/a | no |
-
-## How confident should I be?
-
-| Path | Confidence | Why |
+| Broker/workflow | Observation from S1 | Protect Indiana disposition |
 |---|---|---|
-| Explicit + `verified` | High | Hand-tested selectors against the live page. |
-| Explicit + `untested` | Medium | Definition exists, DOM may have shifted. Failures show up as `error` or `pending_confirm`. |
-| Generic runner (~490 sites) | Best-effort | 4-strategy heuristic. Many succeed; some get a manual fallback. **Not guaranteed.** |
-| `manual` | High (you) | Opened in your browser; you complete it. |
-| `email` | High (delivery) / Medium (compliance) | Email is sent. Whether the broker honors it is up to them. |
+| FastPeopleSearch | Opt-out start supports subject and authorized-agent paths. The agent path exposes separate agent/subject fields, certification, Turnstile, an emailed link, a second identity form, and a final receipt. Turnstile did not issue a token to the automated test session, so nothing was submitted. | Old automation disabled. Owner-assisted/manual only unless the complete authorized-agent flow is implemented and verified. Never bypass Turnstile. |
+| CheckPeople | Suppression start takes the requestor email, requires terms/transactional-email consent, and continues through email. Authorized browser submissions of the start step were attempted, but the sessions exposed neither a reliable POST nor final on-page receipt; one or more verification emails may have been generated. | Old direct-form automation disabled. Current outcome is `owner review`; if the email arrived, it becomes `confirmation needed`, never `removed`. Not eligible for approval until the rest of the workflow is reviewed. |
+| SearchPeopleFree | Form loaded, but its checkbox asks the submitter to certify they are the person associated with the email. | Self-service customer instruction; Protect Indiana should not make that attestation. |
+| Spokeo | Non-S1 fetch showed the opt-out form, but S1 search and opt-out requests returned 403. | Not proposed for automation from S1. |
+| WhitePages | Current suppression UI expects a profile URL; S1 received a bot challenge. | Not proposed until listing discovery and the full workflow can be validated. |
+| InfoTracer | Visible form is a record-search step. | Not a verified removal submission. |
+| SocialCatfish | Third-party request UI exists but requires a profile URL and additional assertions. | Not proposed until listing resolution and exact attestations are implemented. |
+| PrivateRecords | Visible form is a CAPTCHA-backed record-search step. | Not a verified removal submission. |
+| BeenVerified, Radaris, MyLife, Nuwber | Direct lookup received bot challenges or an IP/country block from S1. | Not reliable for S1 direct discovery. |
+| PeopleSmart | Stored opt-out URL redirects to a general help page. | Current integration unsupported. |
+| Clearbit | Stored opt-out URL returns 404; Clearbit is now part of HubSpot. | Current integration unsupported. |
+| Epsilon, Equifax marketing, ZoomInfo | Stored target returned 404 in this review. | Current integration unsupported. |
+| Oracle Data Cloud | Stored target redirects to an Oracle contracts page. | Current integration unsupported. |
+| Experian marketing, Data Axle | Stored pages loaded as informational/privacy pages, not the scripted direct form. | Current integration unsupported. |
+| California DROP | The official consumer service is live for California residents. | Manual external resource; Indiana residents are not eligible. |
 
-After running, use `node watcher.js --verify` to search the broker for your name again and confirm whether listings are gone. `--verify` is the honest ceiling - "submitted" ≠ "deleted."
+## Free and Guided exposure checks
 
-## Reporting drift
+Direct broker lookups from S1 were not reliable. Protect Indiana therefore uses a read-only public
+search-engine query for possible results from broker domains, alongside the separately disclosed
+breach and password-stealer sources. A broker-domain search result is a `possible match` until the
+person confirms the profile. No returned result is never called proof that no listing exists, and
+an unavailable source is never called clean.
 
-If you notice a `verified` broker has started failing, please open an issue with a screenshot of the broker's current opt-out form. Selector changes are the most common cause.
+## Exact outcome ceiling
+
+- `submitted`: the site accepted or appeared to accept a request; deletion is not yet verified.
+- `confirmation needed`: the customer must act on an email or other site step.
+- `verified removed`: a later supported check found an explicit removal signal.
+- `possible match`, `no listing found`, `blocked`, `owner review`, and `error` remain distinct.
+
+The supported customer list can expand only after the public workflow, authorization/attestation,
+submitted fields, success signal, confirmation behavior, and later verification method have each
+been reviewed and recorded.
+
+Redacted test evidence: `docs/protectindiana/broker-validation-2026-08-20.md`.

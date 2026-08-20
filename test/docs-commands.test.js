@@ -133,7 +133,7 @@ test('the README broker count matches brokers.js', () => {
   // table beside it is the main thing a user leans on when deciding whether to
   // trust the output, so it should not drift.
   const brokers = require('../brokers');
-  const claimed = readme.match(/\|\s*\*\*Explicit brokers\*\*[^|]*\|\s*(\d+)\s*\|/);
+  const claimed = readme.match(/\|\s*\*\*Explicit development catalog\*\*[^|]*\|\s*(\d+)\s*\|/);
   assert.ok(claimed, 'the README should state an explicit-broker count');
   assert.equal(
     Number(claimed[1]),

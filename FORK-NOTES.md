@@ -1,7 +1,7 @@
-# Fork notes — AMF / Protect Indiana
+# Fork notes - AMF / Protect Indiana
 
 This is a fork of [`stephenlthorn/auto-identity-remove`](https://github.com/stephenlthorn/auto-identity-remove)
-(MIT), used as the engine behind Protect Indiana's **Sweep** — filing people-search
+(MIT), used as the engine behind Protect Indiana's **Sweep** - filing people-search
 opt-outs for a customer who has authorized removal of their own information.
 
 ## What this fork changes
@@ -10,13 +10,13 @@ opt-outs for a customer who has authorized removal of their own information.
 (`api.2captcha.com/createTask` + `/getTaskResult`) is Anti-Captcha/CapSolver
 compatible, so the change is small and centralized in `lib/captcha.js`:
 
-- `SOLVER_BASE` — the provider base URL, default `https://api.2captcha.com`,
+- `SOLVER_BASE` - the provider base URL, default `https://api.2captcha.com`,
   overridable with the `CAPTCHA_API_BASE` env var (point it back at
   `https://api.capsolver.com` to switch providers, no code change).
-- `TASK_TYPE` — maps CapSolver task-type names to 2Captcha's (`ReCaptchaV2TaskProxyless`
+- `TASK_TYPE` - maps CapSolver task-type names to 2Captcha's (`ReCaptchaV2TaskProxyless`
   → `RecaptchaV2TaskProxyless`, `AntiTurnstileTaskProxyLess` → `TurnstileTaskProxyless`,
   etc.). Unknown types pass through unchanged.
-- `createTask()` — one helper all five solvers call; applies the mapping and posts
+- `createTask()` - one helper all five solvers call; applies the mapping and posts
   to `${SOLVER_BASE}/createTask`.
 - Poll loop treats a non-zero `errorId` (2Captcha's failure shape) as failure, in
   addition to the original `status:'failed'`.
@@ -51,4 +51,4 @@ without the customer's authorization.
 ## Tests
 
 `node --test test/*.test.js dashboard/validate.test.js dashboard/config-status.test.js`
-— full suite green. Fork-specific coverage in `test/twocaptcha-provider.test.js`.
+- full suite green. Fork-specific coverage in `test/twocaptcha-provider.test.js`.

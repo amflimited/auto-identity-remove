@@ -100,3 +100,18 @@ test('without submissionEmailFor, the body uses person.email (backward compatibl
   assert.ok(nmCalls[0].text.includes('jane.doe@example.com'), 'body should contain real email when no relay');
   assert.equal(nmCalls[0].replyTo, undefined, 'replyTo omitted when no masked email');
 });
+
+test('company replyTo overrides the subject submission email', async () => {
+  patchDeps();
+  const { freshEmail, nmCalls, restore } = loadFreshEmailWithSmtpMock();
+  const cfg = { person: PERSON, email: { smtp: { ...SMTP_CFG, replyTo: 'contact@company.example' } } };
+
+  await freshEmail.sendOptOutEmails([EMAIL_BROKER], cfg, 'linux', {
+    submissionEmailFor: () => PERSON.email,
+  });
+
+  restore();
+  restoreDeps();
+  assert.equal(nmCalls[0].replyTo, 'contact@company.example');
+  assert.ok(nmCalls[0].text.includes(PERSON.email), 'subject email remains in the request body');
+});

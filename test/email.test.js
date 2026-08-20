@@ -81,13 +81,17 @@ test('macOS + no smtp → logs manual (SMTP required on all platforms)', async (
 test('smtp configured → nodemailer branch attempted (lazy require mocked)', async () => {
   const logCalls = patchDeps(999);
   const nmCalls = [];
+  const transportCalls = [];
   const origLoad = Module._load;
   Module._load = function (request, parent, isMain) {
     if (request === 'nodemailer') {
       return {
-        createTransport: () => ({
+        createTransport: (opts) => {
+          transportCalls.push(opts);
+          return ({
           sendMail: async (opts) => { nmCalls.push(opts); return { messageId: 'mock' }; },
-        }),
+          });
+        },
       };
     }
     return origLoad.apply(this, arguments);
@@ -98,7 +102,8 @@ test('smtp configured → nodemailer branch attempted (lazy require mocked)', as
   delete require.cache[require.resolve('../lib/email')];
   const freshEmail = require('../lib/email');
 
-  const smtpCfg = { host: 'smtp.example.com', port: 587, user: 'u@x.com', pass: 'pw', from: 'u@x.com' };
+  const smtpCfg = { host: 'smtp.example.com', port: 587, user: 'u@x.com', pass: 'pw', from: 'u@x.com',
+    tls: { rejectUnauthorized: false } };
   const cfg = { person: PERSON, email: { smtp: smtpCfg } };
   await freshEmail.sendOptOutEmails([EMAIL_BROKER], cfg, 'linux');
 
@@ -110,6 +115,7 @@ test('smtp configured → nodemailer branch attempted (lazy require mocked)', as
   restoreDeps();
 
   assert.equal(nmCalls.length, 1, 'expected one nodemailer sendMail call');
+  assert.deepEqual(transportCalls[0].tls, { rejectUnauthorized: false });
   assert.equal(nmCalls[0].to, 'removal@pipl.com');
   assert.ok(nmCalls[0].subject.includes('Jane Doe'));
 
@@ -176,11 +182,11 @@ test('_pickTemplate returns GDPR builder for EU country DE', () => {
   assert.ok(body.includes('Article 17'), 'GDPR body should cite Article 17');
 });
 
-test('_pickTemplate returns CCPA builder for US', () => {
+test('_pickTemplate returns the US privacy-request builder for US', () => {
   const builder = emailMod._pickTemplate('US');
   assert.equal(typeof builder, 'function', '_pickTemplate should return a function');
   const body = builder(PERSON);
-  assert.ok(body.includes('CCPA'), 'CCPA body should mention CCPA');
+  assert.ok(body.includes('Indiana resident'), 'US body should use the Indiana privacy-request language');
 });
 
 test('_pickTemplate returns GDPR builder for GB (UK GDPR)', () => {
@@ -199,9 +205,9 @@ test('_buildBodyGDPR includes Article 17 and person fields', () => {
   assert.ok(body.includes('(512) 555-0000'), 'GDPR body must include phone');
 });
 
-test('_buildBodyCCPA includes CCPA and person fields', () => {
+test('_buildBodyCCPA includes Indiana request language and person fields', () => {
   const body = emailMod._buildBodyCCPA(PERSON);
-  assert.ok(body.includes('CCPA'), 'CCPA body must mention CCPA');
+  assert.ok(body.includes('Indiana resident'), 'US body must identify the Indiana request context');
   assert.ok(body.includes('Jane Doe'), 'CCPA body must include fullName');
   assert.ok(body.includes('Austin'), 'CCPA body must include city');
   assert.ok(body.includes('TX'), 'CCPA body must include state');
@@ -212,7 +218,7 @@ test('_buildBodyCCPA includes CCPA and person fields', () => {
 test('_pickTemplate with undefined country falls back to CCPA', () => {
   const builder = emailMod._pickTemplate(undefined);
   const body = builder(PERSON);
-  assert.ok(body.includes('CCPA'), 'undefined country should use CCPA template');
+  assert.ok(body.includes('Indiana resident'), 'undefined country should use the US privacy-request template');
 });
 
 // ─── Test 6: macOS + smtp → uses SMTP not Mail.app ───────────────────────────

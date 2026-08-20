@@ -6,7 +6,7 @@
  *
  * Creates config.json from your answers and walks you through:
  *   • Personal info (name, address, email, phone)
- *   • CapSolver API key (for CAPTCHA-protected sites)
+ *   • 2Captcha API key (for supported CAPTCHA-protected sites)
  *   • Accounts for sites that require login (one-time)
  *   • macOS launchd scheduling (1st of every month)
  *   • iMessage notification number
@@ -206,13 +206,13 @@ async function main() {
   const phone          = await ask('Phone (digits only for US; any format for non-US)', p.phone || '');
   const phoneFormatted = formatPhone(phone, country);
 
-  // ── CapSolver ────────────────────────────────────────────────────────────
+  // ── 2Captcha (stored in the legacy capsolver-shaped config field) ───────
   console.log('\n── CAPTCHA Solving ────────────────────────────────────────');
-  console.log('Some opt-out forms have CAPTCHAs. CapSolver (capsolver.com)');
-  console.log('solves them automatically for ~$0.001 each - pennies per month.');
-  console.log('Sign up free at https://capsolver.com and paste your API key below.');
+  console.log('Some opt-out forms have CAPTCHAs. This fork can send supported');
+  console.log('tasks to 2Captcha. Review its current terms and pricing before use.');
+  console.log('Prefer TWOCAPTCHA_API_KEY so the key stays out of this file.');
   console.log('Leave blank to skip (those sites go to your manual list instead).\n');
-  const capsolverKey = await ask('CapSolver API key', (existing.capsolver||{}).apiKey || '');
+  const capsolverKey = await ask('2Captcha API key (optional legacy config field)', (existing.capsolver||{}).apiKey || '');
 
   // ── Notification ─────────────────────────────────────────────────────────
   console.log('\n── Notifications ──────────────────────────────────────────');
@@ -302,7 +302,7 @@ async function main() {
     }
   } else {
     console.log('-- Encrypt config at rest? ----------------------------------------');
-    console.log('Your config holds PII, the CapSolver key, and (optionally) an SMTP');
+    console.log('Your config holds PII, a CAPTCHA-provider key, and (optionally) an SMTP');
     console.log('password. You can encrypt it with AES-256-GCM. You will then need to');
     console.log('set AIDR_PASSPHRASE in the environment when running the watcher.\n');
     const doEncrypt = await confirm('Encrypt config.json now?');

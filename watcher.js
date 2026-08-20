@@ -40,10 +40,11 @@ const ONLY_ARG  = onlyIdx !== -1 ? (process.argv[onlyIdx + 1] || '') : null;
 const skipIdx   = process.argv.indexOf('--skip');
 const SKIP_ARG  = skipIdx !== -1 ? (process.argv[skipIdx + 1] || '') : null;
 const RETRY_FAILED = process.argv.includes('--retry-failed');
-// Explicit-only: run just the curated high-value people-search brokers (the ~44 in
-// brokers.js) and skip the ~490-broker generic marketing/ad-tech pass. This is the
-// fast (~1h) removal tier; the full run covers everything. Also settable via env.
+// Explicit-only skips the generic development catalog. It does NOT by itself
+// mean every hand-written integration is approved for Protect Indiana customers;
+// AIDR_PROTECTINDIANA_MODE=removal applies the separate owner-approved boundary.
 const EXPLICIT_ONLY = process.argv.includes('--explicit-only') || process.env.AIDR_EXPLICIT_ONLY === '1';
+const PROTECTINDIANA_MODE = (process.env.AIDR_PROTECTINDIANA_MODE || '').trim();
 const LIST_MODE    = process.argv.includes('--list');
 const SCORE_MODE   = process.argv.includes('--score');
 
@@ -756,8 +757,20 @@ async function main() {
 }
 
 async function _mainBody() {
-  const brokers = require('./brokers');
+  const brokerCatalog = require('./brokers');
   const { runGenericBrokers } = require('./generic-runner');
+  let brokers = brokerCatalog;
+  if (PROTECTINDIANA_MODE) {
+    if (PROTECTINDIANA_MODE !== 'removal') {
+      throw new Error(`unsupported AIDR_PROTECTINDIANA_MODE: ${PROTECTINDIANA_MODE}`);
+    }
+    const { loadRemovalBoundary, applyRemovalBoundary } = require('./lib/product-boundary');
+    const boundaryPath = process.env.AIDR_PROTECTINDIANA_BOUNDARY_PATH || undefined;
+    const boundary = loadRemovalBoundary(boundaryPath);
+    brokers = applyRemovalBoundary(brokerCatalog, boundary);
+    brokers.forPerson = person => applyRemovalBoundary(brokerCatalog.forPerson(person), boundary);
+    console.log(`Protect Indiana owner-approved removal boundary: ${brokers.length} broker(s)`);
+  }
 
   console.log('\n🔒 auto-identity-remove - starting run');
   if (PREVIEW)       console.log('👀 PREVIEW - field values and target URLs will be printed before submit. No state will be saved.');
@@ -765,7 +778,7 @@ async function _mainBody() {
   if (VERIFY)        console.log('🔍 VERIFY - re-checking listings. No forms submitted. Verification results are saved.');
   if (POLLUTE_COUNT) console.log(`⚠️  NOISE MODE - ${POLLUTE_COUNT} bogus record(s) will be submitted to acceptsBogus brokers.`);
   console.log(`📅 ${new Date().toLocaleString()}`);
-  console.log(`📋 ${brokers.length} explicit brokers + 500+ generic | re-check window: ${RECHECK_DAYS} days\n`);
+  console.log(`📋 ${brokers.length} explicit broker definition(s)${EXPLICIT_ONLY ? '; generic pass disabled' : '; development-only generic catalog enabled'} | re-check window: ${RECHECK_DAYS} days\n`);
 
   // Launch persistent browser (reuses profile / saved logins)
   fs.mkdirSync(profileDir, { recursive: true });
@@ -811,7 +824,10 @@ async function _mainBody() {
     const { runSerpScan } = require('./lib/serp-scan');
     console.log('\n🔎 SERP scan - checking broker visibility in search engines');
     console.log('   DDG first, then Bing, then Google (may be blocked).\n');
-    const summary = await runSerpScan(context, persons, brokers);
+    const summary = await runSerpScan(context, persons, brokers, {
+      _skipWrite: process.env.AIDR_SERP_SKIP_WRITE === '1',
+    });
+    console.log(`PI_SERP_RESULT ${JSON.stringify(summary)}`);
     await context.close().catch(() => {});
 
     const pad = (s, n) => String(s).padEnd(n);
@@ -997,13 +1013,13 @@ async function _mainBody() {
   // marked the broker done for the whole household, and the report claimed
   // everyone had been opted out.
   //
-  // The cost is real and worth naming: an N-person run now does the ~490-broker
+  // The cost is real and worth naming: an N-person development run does the generic
   // generic pass N times, so wall-clock scales with N. Correct coverage beats a
   // faster run that quietly skips people. Domain-level toggles (cookie /
   // "Do Not Sell") get re-applied per person, which is harmless.
   const genericTotals = {};
   if (EXPLICIT_ONLY) {
-    console.log(`\n── Skipping the ~490-broker generic pass (--explicit-only: high-value people-search sites only) ──`);
+    console.log(`\n── Skipping the generic development catalog (--explicit-only) ──`);
   } else {
     for (const person of persons) {
       if (persons.length > 1) {
@@ -1065,9 +1081,9 @@ async function _mainBody() {
 
   // iMessage
   const totalProcessed = results.succeeded.length + results.skipped.length + results.notFound.length + results.captchaFailed.length + results.manual.length + results.errors.length;
-  const short = `🔒 Privacy Watcher (${new Date().toLocaleDateString()}):\n✅ Removed: ${results.succeeded.length}\n⏭  Skipped: ${results.skipped.length}\n📋 Manual: ${results.captchaFailed.length + results.manual.length}\n📊 Total: ${totalProcessed} brokers checked`;
+  const short = `🔒 Privacy Watcher (${new Date().toLocaleDateString()}):\n✅ Submitted: ${results.succeeded.length}\n⏭  Skipped: ${results.skipped.length}\n📋 Manual: ${results.captchaFailed.length + results.manual.length}\n📊 Total: ${totalProcessed} brokers checked`;
   sendText(short, notify);
-  desktopNotify('Privacy Watcher', `Done - ${results.succeeded.length} removed, ${results.captchaFailed.length + results.manual.length} need manual action (${totalProcessed} total)`);
+  desktopNotify('Privacy Watcher', `Done - ${results.succeeded.length} submitted, ${results.captchaFailed.length + results.manual.length} need manual action (${totalProcessed} total)`);
 }
 
 main().catch(err => {

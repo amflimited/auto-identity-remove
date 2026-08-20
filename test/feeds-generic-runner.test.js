@@ -3,7 +3,8 @@
  *
  * loadGenericBrokers must pick up data/feeds-brokers.json (the live registry
  * feed file written by watcher.js --update-brokers) as a third source, deduped
- * against the explicit broker hosts and the Markup/BADBOOL hosts.
+ * against the explicit broker hosts. The unapproved Markup and BADBOOL data
+ * must remain excluded from the default commercial-compatible runtime.
  *
  * Strategy: intercept fs.existsSync / fs.readFileSync via Module._load so the
  * three data files (markup, badbool, feeds) return controlled fixtures and no
@@ -60,7 +61,7 @@ function freshGenericRunnerWith(fsMock) {
   return gr;
 }
 
-test('loadGenericBrokers includes feeds-brokers.json entries as source=ca/vt', () => {
+test('loadGenericBrokers includes feeds entries and excludes Markup by default', () => {
   const files = {
     [MARKUP_PATH]: JSON.stringify([
       { name: 'Markup Co', urlFinal: 'https://markup.example.com/optout' },
@@ -78,7 +79,7 @@ test('loadGenericBrokers includes feeds-brokers.json entries as source=ca/vt', (
   assert.equal(byName['Acme Data Co'].url, 'https://acme.example.com/opt-out');
   assert.equal(byName['Acme Data Co'].source, 'ca');
   assert.equal(byName['Gamma Insights'].source, 'vt');
-  assert.ok(byName['Markup Co'], 'markup fallback still loaded');
+  assert.equal(byName['Markup Co'], undefined, 'unapproved Markup data stays excluded');
 });
 
 test('loadGenericBrokers dedups feed entries against explicit broker hosts', () => {
@@ -97,7 +98,7 @@ test('loadGenericBrokers dedups feed entries against explicit broker hosts', () 
   assert.equal(names.includes('Acme Data Co'), true, 'non-colliding feed kept');
 });
 
-test('loadGenericBrokers dedups feed entries against Markup hosts loaded first', () => {
+test('loadGenericBrokers does not let disabled Markup data shadow a feed entry', () => {
   const files = {
     [MARKUP_PATH]: JSON.stringify([
       { name: 'Dupe Co', urlFinal: 'https://dupe.example.com/privacy' },
@@ -110,8 +111,8 @@ test('loadGenericBrokers dedups feed entries against Markup hosts loaded first',
   const gr = freshGenericRunnerWith(makeFsMock(files));
   const brokers = gr.loadGenericBrokers(new Set());
   const names = brokers.map(b => b.name);
-  assert.equal(names.includes('Dupe Co'), true, 'markup entry kept (loaded first)');
-  assert.equal(names.includes('Dupe Feed'), false, 'feed dup of markup host dropped');
+  assert.equal(names.includes('Dupe Co'), false, 'disabled Markup entry is absent');
+  assert.equal(names.includes('Dupe Feed'), true, 'feed entry remains available');
 });
 
 test('loadGenericBrokers skips feed entries with no usable http url', () => {
@@ -130,7 +131,7 @@ test('loadGenericBrokers skips feed entries with no usable http url', () => {
   assert.equal(names.includes('Good Broker'), true);
 });
 
-test('loadGenericBrokers works when feeds-brokers.json is absent (markup-only fallback)', () => {
+test('loadGenericBrokers does not fall back to unapproved Markup data', () => {
   const files = {
     [MARKUP_PATH]: JSON.stringify([
       { name: 'Markup Co', urlFinal: 'https://markup.example.com/optout' },
@@ -140,7 +141,5 @@ test('loadGenericBrokers works when feeds-brokers.json is absent (markup-only fa
   };
   const gr = freshGenericRunnerWith(makeFsMock(files));
   const brokers = gr.loadGenericBrokers(new Set());
-  assert.equal(brokers.length, 1);
-  assert.equal(brokers[0].name, 'Markup Co');
-  assert.equal(brokers[0].source, 'markup');
+  assert.equal(brokers.length, 0);
 });

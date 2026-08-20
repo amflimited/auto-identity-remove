@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "reviewedAt": "2026-08-20",
+  "approvalStatus": "approved",
+  "approvedAt": "2026-08-20T17:55:00Z",
+  "approvedBy": "Adam Michael Ferree, owner",
+  "approvedRemovalBrokers": [
+    "Spokeo (email)",
+    "Pipl",
+    "FastPeopleSearch",
+    "CheckPeople"
+  ],
+  "candidateRemovalBrokers": [
+    {
+      "name": "FastPeopleSearch",
+      "interfaceCheckedAt": "2026-08-20",
+      "interfaceResult": "The opt-out start loaded from S1 and explicitly supports an authorized agent. It requires separate agent and subject identity fields, certification, Cloudflare Turnstile, an emailed link, a second identity form, and a final receipt. In the authorized owner test, Turnstile did not issue a token to the automated session, so no request was submitted.",
+      "testStatus": "approved_supervised_exception",
+      "proposedBoundary": "Owner-assisted/manual only unless a compliant supervised path is built and the full authorized-agent workflow is verified. Never bypass Turnstile; email confirmation and ambiguous responses remain owner review."
+    },
+    {
+      "name": "CheckPeople",
+      "interfaceCheckedAt": "2026-08-20",
+      "interfaceResult": "The suppression page loaded from S1. Its first step collects the requestor's email, requires agreement to terms and transactional email, and continues through an emailed workflow. Authorized browser submissions of that start step were attempted, but the automated sessions exposed neither a reliable POST receipt nor a final on-page receipt and cannot access the owner's iCloud inbox. One or more verification emails may have been generated.",
+      "testStatus": "approved_supervised_exception",
+      "proposedBoundary": "Treat the email start as confirmation needed only. Do not approve customer automation until the emailed workflow, submitted identity fields, authorization language, final receipt, and later verification method are reviewed."
+    }
+  ],
+  "observedButNotProposed": [
+    {
+      "name": "SearchPeopleFree",
+      "reason": "Its current checkbox asks the submitter to certify that they are the person associated with the email address. Protect Indiana should give the customer self-service instructions rather than make that attestation for them."
+    },
+    {
+      "name": "Spokeo",
+      "reason": "The form was visible from a non-S1 network, but both search and opt-out requests returned HTTP 403 from S1 during the review."
+    },
+    {
+      "name": "WhitePages",
+      "reason": "The current suppression form requires a profile URL, and S1 received a bot challenge before a supervised workflow could be validated."
+    },
+    {
+      "name": "InfoTracer",
+      "reason": "The visible page is a record-search step, not proof that a removal request was submitted."
+    },
+    {
+      "name": "SocialCatfish",
+      "reason": "The third-party request form requires a profile URL and additional assertions that the current integration does not safely resolve."
+    },
+    {
+      "name": "PrivateRecords",
+      "reason": "The visible page is a CAPTCHA-backed record-search step, not the final removal request."
+    }
+  ],
+  "notes": [
+    "This is a fail-closed product boundary, not a claim that every integration in brokers.js is supported. Spokeo and Pipl use recorded email privacy-request attempts; FastPeopleSearch and CheckPeople are supervised exception lanes and never bypass challenges or email confirmation.",
+    "The owner approved this launch boundary after live interface checks from S1 and authorized owner testing.",
+    "Interface review and authorized owner testing are recorded separately; neither is end-to-end proof of deletion.",
+    "Search-engine exposure checks are read-only and are not governed by this removal-submission list."
+  ]
+}

@@ -30,13 +30,13 @@ const currResults = {
   runAt: '2026-05-19T10:00:00.000Z',
   succeeded: [
     { broker: 'Spokeo', status: 'success', detail: '' },     // still succeeded
-    { broker: 'PeopleFinder', status: 'success', detail: '' }, // newly removed (was notFound)
+    { broker: 'PeopleFinder', status: 'success', detail: '' }, // newly submitted (was notFound)
   ],
   notFound: [
     { broker: 'Radaris', status: 'notFound', detail: '' },   // new exposure (was succeeded)
   ],
   errors: [
-    { broker: 'BeenVerified', status: 'error', detail: '' }, // regressed (was succeeded)
+    { broker: 'BeenVerified', status: 'error', detail: '' }, // new error (was succeeded)
   ],
   skipped: [],
   captchaFailed: [],
@@ -46,36 +46,36 @@ const currResults = {
 // ── diffResults tests ─────────────────────────────────────────────────────────
 
 describe('diffResults', () => {
-  it('detects new exposures - brokers previously succeeded but now in notFound', () => {
+  it('detects new no-listing results without calling them exposure changes', () => {
     const diff = diffResults(prevResults, currResults);
-    assert.deepEqual(diff.newExposures, ['Radaris']);
+    assert.deepEqual(diff.newNoListingResults, ['Radaris']);
   });
 
-  it('detects newly removed - brokers now succeeded that were not previously succeeded', () => {
+  it('detects new accepted submissions without calling them removals', () => {
     const diff = diffResults(prevResults, currResults);
-    assert.deepEqual(diff.newlyRemoved, ['PeopleFinder']);
+    assert.deepEqual(diff.newSubmissions, ['PeopleFinder']);
   });
 
-  it('detects regressions - brokers previously succeeded but now in errors', () => {
+  it('detects new errors', () => {
     const diff = diffResults(prevResults, currResults);
-    assert.deepEqual(diff.regressed, ['BeenVerified']);
+    assert.deepEqual(diff.newErrors, ['BeenVerified']);
   });
 
   it('formats a human-readable summary line', () => {
     const diff = diffResults(prevResults, currResults);
     assert.equal(
       diff.summary,
-      'Since last run: +1 new exposures, +1 newly removed, 1 regressed.'
+      'Since last run: +1 new submissions, +1 new no-listing results, +1 new errors.'
     );
   });
 
   it('no changes returns zeroed summary', () => {
     const same = { ...prevResults, runAt: '2026-05-19T00:00:00.000Z' };
     const diff = diffResults(prevResults, same);
-    assert.deepEqual(diff.newExposures, []);
-    assert.deepEqual(diff.newlyRemoved, []);
-    assert.deepEqual(diff.regressed, []);
-    assert.equal(diff.summary, 'Since last run: +0 new exposures, +0 newly removed, 0 regressed.');
+    assert.deepEqual(diff.newSubmissions, []);
+    assert.deepEqual(diff.newNoListingResults, []);
+    assert.deepEqual(diff.newErrors, []);
+    assert.equal(diff.summary, 'Since last run: +0 new submissions, +0 new no-listing results, +0 new errors.');
   });
 
   it('when prev is null, treats all current brokers as newly attempted', () => {
@@ -85,9 +85,9 @@ describe('diffResults', () => {
       ...currResults.notFound,
       ...currResults.errors,
     ].map(r => r.broker).sort();
-    assert.deepEqual(diff.newlyRemoved.sort(), allCurrent);
-    assert.deepEqual(diff.newExposures, []);
-    assert.deepEqual(diff.regressed, []);
+    assert.deepEqual(diff.newSubmissions, []);
+    assert.deepEqual(diff.newNoListingResults, []);
+    assert.deepEqual(diff.newErrors, []);
     assert.match(diff.summary, /newly attempted/);
   });
 });

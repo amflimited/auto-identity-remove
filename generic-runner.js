@@ -1,8 +1,9 @@
 /**
  * generic-runner.js
  *
- * Handles the ~460 brokers from The Markup's 499-URL dataset and BADBOOL
- * that aren't explicitly mapped in brokers.js.
+ * Handles licensed/open registry rows that are not explicitly mapped in brokers.js.
+ * Protect Indiana's customer-plan wrapper runs --explicit-only; this generic runner is a
+ * development capability and must not be presented as supported or verified coverage.
  *
  * Strategy per site:
  *   1. Navigate to the opt-out URL
@@ -430,9 +431,9 @@ function loadGenericBrokers(explicitBrokerHosts) {
   const brokers = [];
   const seen = new Set(explicitBrokerHosts);
 
-  // Permissive registry (PersProtect CC BY 4.0 + eraser MIT; ~930 navigable opt-out URLs).
+  // Permissive registry (PersProtect CC BY 4.0; currently 499 rows / 452 navigable URLs).
   // Primary source: commercially licensed and de-duplicated, so it wins host dedup over the
-  // Markup fallback. See NOTICE-DATA-SOURCES.md. Rows without an http opt-out URL are skipped
+  // licensed development directory. See NOTICE-DATA-SOURCES.md. Rows without an http URL are skipped
   // here (they still carry a removal email for the email channel / dossier).
   if (fs.existsSync(PERMISSIVE_PATH)) {
     try {
@@ -450,7 +451,7 @@ function loadGenericBrokers(explicitBrokerHosts) {
     } catch(_) {}
   }
 
-  // The Markup dataset — EXCLUDED from the paid runtime by default: it is a non-commercial
+  // The Markup dataset - EXCLUDED from the paid runtime by default: it is a non-commercial
   // newsroom dataset and this is a revenue product, the same reason BADBOOL was retired. The
   // permissive registry already supersedes it. Set PI_ALLOW_MARKUP=1 only if its license is
   // ever confirmed to permit commercial use.
@@ -469,8 +470,8 @@ function loadGenericBrokers(explicitBrokerHosts) {
 
   // Live registry feeds (California + Vermont), written by
   // `node watcher.js --update-brokers` to data/feeds-brokers.json. Loaded after
-  // Markup/BADBOOL so the Markup dataset stays the fallback and feed entries are
-  // deduped against everything already loaded. Each row is the normalized shape
+  // the licensed directory so feed entries are deduped against everything already loaded.
+  // Each row is the normalized shape
   // { name, optOutUrl, method, source }; the generic runner navigates `url`, so
   // url-less manual rows are skipped here.
   if (fs.existsSync(FEEDS_PATH)) {
@@ -551,7 +552,7 @@ async function runGenericBrokers(context, explicitBrokerHosts, state, logResult,
     : loadGenericBrokers(explicitBrokerHosts);
   const processFn = opts.injectedProcessFn || processGenericUrl;
 
-  console.log(`\n── Generic brokers (${brokers.length} from Markup CSV + BADBOOL)${dryRun ? ' [DRY RUN]' : ''} ──`);
+  console.log(`\n── Generic brokers (${brokers.length} from licensed/open registries)${dryRun ? ' [DRY RUN]' : ''} ──`);
 
   let page = await context.newPage();
 

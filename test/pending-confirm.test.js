@@ -98,7 +98,7 @@ test('shouldSkip: non-pending fresh success → skip via 90-day window', () => {
     state.optOuts[N] = { lastSuccess: new Date(Date.now() - 10 * 86400000).toISOString() };
     const out = cfg.shouldSkip(N);
     assert.ok(out);
-    assert.match(out.reason, /Last removed/);
+    assert.match(out.reason, /Last request accepted/);
   });
 });
 
