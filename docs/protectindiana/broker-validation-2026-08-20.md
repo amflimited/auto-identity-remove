@@ -1,4 +1,4 @@
-# Protect Indiana broker validation — 2026-08-20
+# Protect Indiana broker validation - 2026-08-20
 
 This record contains no raw owner identity. The adult owner authorized use of the existing private owner record for
 one production-path validation. The two temporary identity configuration files were securely deleted after the run;
