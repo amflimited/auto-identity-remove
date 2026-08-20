@@ -25,7 +25,8 @@ const os   = require('os');
 const CONFIG_PATH     = path.join(__dirname, 'config.json');
 const STATE_PATH      = path.join(__dirname, 'state.json');
 const MARKUP_PATH     = path.join(__dirname, 'data', 'markup-parsed.json');
-const BADBOOL_PATH    = path.join(__dirname, 'data', 'badbool-extra.json');
+const BADBOOL_PATH    = path.join(__dirname, 'data', 'badbool-extra.json'); // retired from runtime (CC BY-NC-SA); superseded by permissive-brokers.json
+const PERMISSIVE_PATH = path.join(__dirname, 'data', 'permissive-brokers.json');
 const FEEDS_PATH      = path.join(__dirname, 'data', 'feeds-brokers.json');
 const DEAD_URLS_PATH  = path.join(__dirname, 'data', 'dead-urls.json');
 
@@ -429,8 +430,31 @@ function loadGenericBrokers(explicitBrokerHosts) {
   const brokers = [];
   const seen = new Set(explicitBrokerHosts);
 
-  // The Markup dataset (494 entries)
-  if (fs.existsSync(MARKUP_PATH)) {
+  // Permissive registry (PersProtect CC BY 4.0 + eraser MIT; ~930 navigable opt-out URLs).
+  // Primary source: commercially licensed and de-duplicated, so it wins host dedup over the
+  // Markup fallback. See NOTICE-DATA-SOURCES.md. Rows without an http opt-out URL are skipped
+  // here (they still carry a removal email for the email channel / dossier).
+  if (fs.existsSync(PERMISSIVE_PATH)) {
+    try {
+      const reg = JSON.parse(fs.readFileSync(PERMISSIVE_PATH, 'utf8'));
+      for (const row of (reg.brokers || [])) {
+        const url = row && row.optOutUrl;
+        if (!url || !url.startsWith('http')) continue;
+        try {
+          const host = new URL(url).hostname.replace(/^www\./, '');
+          if (seen.has(host)) continue;
+          seen.add(host);
+          brokers.push({ name: row.name || host, url, source: 'permissive' });
+        } catch(_) {}
+      }
+    } catch(_) {}
+  }
+
+  // The Markup dataset — EXCLUDED from the paid runtime by default: it is a non-commercial
+  // newsroom dataset and this is a revenue product, the same reason BADBOOL was retired. The
+  // permissive registry already supersedes it. Set PI_ALLOW_MARKUP=1 only if its license is
+  // ever confirmed to permit commercial use.
+  if (process.env.PI_ALLOW_MARKUP === '1' && fs.existsSync(MARKUP_PATH)) {
     const markup = JSON.parse(fs.readFileSync(MARKUP_PATH, 'utf8'));
     for (const row of markup) {
       if (!row.urlFinal || !row.urlFinal.startsWith('http')) continue;
@@ -439,20 +463,6 @@ function loadGenericBrokers(explicitBrokerHosts) {
         if (seen.has(host)) continue;
         seen.add(host);
         brokers.push({ name: row.name || host, url: row.urlFinal, source: 'markup' });
-      } catch(_) {}
-    }
-  }
-
-  // BADBOOL extras (27 additional people-search sites)
-  if (fs.existsSync(BADBOOL_PATH)) {
-    const extra = JSON.parse(fs.readFileSync(BADBOOL_PATH, 'utf8'));
-    for (const url of extra) {
-      if (!url.startsWith('http')) continue;
-      try {
-        const host = new URL(url).hostname.replace(/^www\./, '');
-        if (seen.has(host)) continue;
-        seen.add(host);
-        brokers.push({ name: host, url, source: 'badbool' });
       } catch(_) {}
     }
   }
